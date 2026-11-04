@@ -8,7 +8,6 @@ version = "0.1.0"
 description = "QuickPUE: rapid, transparent data centre infrastructure energy and PUE estimator (quasi-steady 8,760 h engine)"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "BSD-3-Clause" }
 dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
