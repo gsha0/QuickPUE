@@ -1,0 +1,4 @@
+# SSDA greenhouse gas estimate output set (initial proposal, requirements 13.2). GHG uses user factors only.
+id: ssda
+title: Greenhouse gas estimate (SSDA-style output set)
+tables: [OUT-1, GHG, OUT-2, OUT-2c, OUT-6a, OUT-6c, OUT-6b]

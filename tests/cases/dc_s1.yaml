@@ -1,0 +1,201 @@
+# DC_S1 reference test case (docs/TEST_CASES.md Section 4): 192 MW, single 28 to 38 C loop,
+# free-cooling air-cooled chillers. Input-definition, scale and robustness case (T1 on inputs, T3).
+# The source results are not usable as a reference (they carry DC_O1's 62 MW basis).
+# The 8 loops x 21 chillers are aggregated into one equivalent loop (symmetric pairs of halls).
+schema_version: "1.0"
+project:
+  name: DC_S1
+  workflow: design-check
+  reference_documents: ["docs/TEST_CASES.md v0.1, case DC_S1"]
+weather:
+  epw: ../data/AUS_NSW_Horsley.Equestrian.Centre.947600_TMYx.2011-2025.epw
+scenarios: nabers
+water_system: WS-1
+
+halls:
+  - name: Network hall
+    count: {value: 8, source: {kind: assumption, ref: "number of network vs server halls missing (4.3); 8 / 8 assumed"}}
+    it_kw: {value: 12000, source: {kind: document, ref: "4.1 16 x 12 MW"}}
+    liquid_fraction: {value: 0.5, source: {kind: document, ref: "4.1 network halls modelled FWU 50 % / CDU 50 %"}}
+    area_m2: {value: 1367.2, source: {kind: document, ref: "4.1 data hall 21,875 m2 (C: same figure as DC_O1) / 16"}}
+    cold_aisle_c: 27.5
+    lighting_w_m2: 5.0
+  - name: Server hall
+    count: 8
+    it_kw: 12000
+    liquid_fraction: {value: 0.6, source: {kind: document, ref: "4.1 server halls modelled FWU 40 % / CDU 60 %"}}
+    area_m2: 1367.2
+    cold_aisle_c: 27.5
+    lighting_w_m2: 5.0
+
+loops:
+  - name: CHW
+    medium: pg
+    glycol_pct: {value: 25, source: {kind: assumption, ref: "free-cooling coils outdoors; TCS is PG 25 %"}}
+    supply_c: {value: 28.0, source: {kind: document, ref: "4.1 single CHW loop 28 / 38 C"}}
+    return_c: 38.0
+    reset:
+      type: ambient_linear
+      t_amb_low_c: {value: 26.0, source: {kind: document, ref: "4.1 CHW reset chart (S-03)"}}
+      t_amb_high_c: 41.0
+      supply_low_c: 24.0
+      supply_high_c: 28.0
+
+plants:
+  - name: Chiller plant
+    type: CP-2
+    loop: CHW
+    chillers:
+      - name: ACC-FC
+        kind: air_cooled
+        quantity: {value: 168, source: {kind: document, ref: "4.1 168 chillers, 8 loops x (20 duty + 1 standby)"}}
+        standby: 8
+        capacity_kw: {value: 1200, source: {kind: document, ref: "4.1 1,200 kW each"}}
+        power_kw: {value: 268, source: {kind: inference, ref: "295 kW absorbed incl. 27 kW pump (D: COP 4.48)"}}
+        rated_lwt_c: {value: 28.0, source: {kind: assumption, ref: "rating conditions missing (4.3)"}}
+        rated_ect_c: {value: 35.0, source: {kind: assumption, ref: "rating conditions missing (4.3)"}}
+        recirculation_k: {value: 2.7, source: {kind: document, ref: "4.1 +2.7 K from CFD (S-04)"}}
+        free_cooling: {enable_dt_k: 1.0}
+        integral_pump:
+          power_kw: {value: 27.0, source: {kind: document, ref: "4.1 27 kW integral CHW pump"}}
+          part_load: {method: M2, curve: K-DP(0.3), f_min: 0.5, running: R-ALL}
+
+cdus:
+  - name: CDU
+    serves: [Network hall, Server hall]
+    loop: CHW
+    quantity: {value: 96, source: {kind: document, ref: "4.1 6 per hall, 4 active + 2 standby"}}
+    active: 64
+    capacity_kw: {value: 2700, source: {kind: document, ref: "4.1 2,700 kW (text; table 2,752 kW, C)"}}
+    tcs_supply_c: {value: 32.0, source: {kind: document, ref: "4.1 TCS 32 / 42 C"}}
+    approach_k: {value: 4.0, source: {kind: inference, ref: "TCS 32 C on a 28 C primary (D)"}}
+    pump:
+      power_kw: {value: 52.0, source: {kind: document, ref: "4.1 52 kW absorbed"}}
+      on_ups: {value: true, source: {kind: document, ref: "4.1 CDUs UPS-backed"}}
+      part_load: {method: M3, curve: K-CONST}
+
+fwus:
+  - name: FWU-1
+    serves: [Network hall]
+    loop: CHW
+    fan_power_kw: {value: 34.0, source: {kind: document, ref: "4.1 type 1 37,000 L/s, 475 kW, 34 kW"}}
+    airflow_l_s: 37000
+    coil_capacity_kw: 475
+    air_dt_k: {value: 10.6, source: {kind: document, ref: "4.1 air dT 10.6 K"}}
+    on_ups: true
+    part_load:
+      method: M2
+      curve: {table: [[0.0, 0.08], [0.1, 0.08], [0.2, 0.11], [0.3, 0.16], [0.4, 0.22], [0.5, 0.29], [0.6, 0.37],
+                      [0.7, 0.47], [0.8, 0.61], [0.9, 0.78], [1.0, 1.0]], name: K-USER fan curve 2.2}
+      f_min: 0.3
+      running: R-ALL
+  - name: FWU-2
+    serves: [Server hall]
+    loop: CHW
+    fan_power_kw: {value: 28.1, source: {kind: document, ref: "4.1 type 2 35,000 L/s, 450 kW, 28.1 kW"}}
+    airflow_l_s: 35000
+    coil_capacity_kw: 450
+    air_dt_k: 10.6
+    on_ups: true
+    part_load:
+      method: M2
+      curve: {table: [[0.0, 0.08], [0.1, 0.08], [0.2, 0.11], [0.3, 0.16], [0.4, 0.22], [0.5, 0.29], [0.6, 0.37],
+                      [0.7, 0.47], [0.8, 0.61], [0.9, 0.78], [1.0, 1.0]], name: K-USER fan curve 2.2}
+      f_min: 0.3
+      running: R-ALL
+
+zones:
+  - name: Electrical lineup rooms
+    category: electrical
+    count: 16
+    setpoint_c: {value: 40.0, source: {kind: document, ref: "4.1 IT / mechanical lineup rooms < 40 C"}}
+    pressurised: true
+    losses: {UPS-IT: 0.9, UPS-MECH: 0.9, Distribution: 0.5}
+  - name: UPS battery rooms
+    category: battery
+    count: 16
+    setpoint_c: {value: 28.0, source: {kind: document, ref: "4.1 UPS battery rooms < 28 C"}}
+    pressurised: true
+    losses: {UPS-IT: 0.1, UPS-MECH: 0.1}
+  - name: MV rooms
+    category: electrical
+    count: 8
+    setpoint_c: {value: 35.0, source: {kind: document, ref: "4.1 MV rooms < 35 C"}}
+    pressurised: true
+    losses: {TX-MVLV: 1.0}
+  - name: MMR
+    category: comms
+    count: 2
+    area_m2: 100
+    setpoint_c: 27.0
+    pressurised: true
+
+room_units:
+  - name: CRAH lineup
+    type: CRAH
+    serves: [Electrical lineup rooms]
+    loop: CHW
+    capacity_kw: {value: 60.0, source: {kind: document, ref: "4.1 CRAH 6,638 L/s, 64 / 60 kW, 3.4 kW fan"}}
+    airflow_l_s: 6638
+    fan_power_kw: 3.4
+  - name: CRAC battery
+    type: CRAC
+    serves: [UPS battery rooms]
+    capacity_kw: {value: 60.0, source: {kind: document, ref: "4.1 CRAC 6,383 L/s, 80.7 / 60 kW, 24.2 kW (C: air vs water cooled)"}}
+    airflow_l_s: 6383
+    fan_power_kw: 2.0
+    cop: 3.0
+    recirculation_k: 2.7
+  - name: FCU MV
+    type: FCU
+    serves: [MV rooms]
+    loop: CHW
+    capacity_kw: {value: 12.8, source: {kind: document, ref: "4.1 MV switchboard FCU 12.8 kW, 485 L/s, 0.2 kW"}}
+    airflow_l_s: 485
+    fan_power_kw: 0.2
+  - name: CRAC MMR
+    type: CRAC
+    serves: [MMR]
+    capacity_kw: {value: 38.1, source: {kind: document, ref: "4.1 MMR type 1 3,420 L/s, 41.1 / 38.1 kW"}}
+    airflow_l_s: 3420
+    fan_power_kw: 2.0
+    cop: 3.0
+
+electrical:
+  loss_convention: physical
+  ups:
+    - name: UPS-IT
+      path: it
+      efficiency: &eff [[0.25, 0.880], [0.30, 0.895], [0.35, 0.910], [0.40, 0.920], [0.45, 0.925], [0.50, 0.927],
+                        [0.55, 0.931], [0.60, 0.936], [0.65, 0.940], [0.70, 0.942], [0.75, 0.945], [0.80, 0.949],
+                        [0.85, 0.953], [0.90, 0.955], [0.95, 0.957], [1.00, 0.960]]
+    - name: UPS-MECH
+      path: mechanical
+      modules: 2
+      systems: {value: 32, source: {kind: assumption, ref: "lineup count missing (4.3); 2 x 1,500 kW per lineup"}}
+      module_kw: {value: 1500, source: {kind: document, ref: "4.1 2 x 1,500 kW per lineup"}}
+      efficiency: *eff
+  transformers:
+    - {name: TX-MVLV, level: MVLV, percent: 1.0, basis: facility}
+    - name: TX-HV
+      level: HV
+      basis: facility
+      percent: {value: 0.5, source: {kind: document, ref: "4.1 0.5 % for 330 / 11 kV (C: results label 0.8 %)"}}
+  distribution: {name: Distribution, percent: 1.0, basis: infrastructure}
+  heat_outdoors: {TX-HV: 1.0, Distribution: 0.5}
+
+other:
+  jacket_heaters:
+    kw_per_generator: 8.0
+    count: {value: 118, source: {kind: inference, ref: "944 kW total implies 118 x 8 kW (C: generator count)"}}
+    eflh_hours: {value: 3680, source: {kind: document, ref: "4.1 EFLH 3,680 h"}}
+  lifts:
+    - {name: Passenger, count: 2, trips_per_year: 36500, power_kw: 13.6, trip_time_s: 13.0, standby_kw: 0.08}
+    - {name: Goods, count: 2, trips_per_year: 18250, power_kw: 51.2, trip_time_s: 15.4, standby_kw: 0.08}
+  pv: {annual_kwh: 175407}
+
+contingency:
+  percent: {value: 5.0, source: {kind: document, ref: "4.1 contingency 5 % (text; results row 10 %, C)"}}
+
+settings:
+  sizing_it_fraction: 0.9

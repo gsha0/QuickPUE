@@ -1,0 +1,27 @@
+# Topology preset AIR-WSE (requirements 8.4.1). Defaults are assumptions; override any value.
+id: AIR-WSE
+name: Air cooled, towers + WSE only
+extends: _base_air
+water_system: WS-6
+plant_type: CP-9
+dcoptest: Type 1
+description: Cooling towers and plate heat exchanger only (no chillers); unmet hours
+  reported when the wet bulb is too high.
+hall_name: Data hall
+template:
+  plants:
+  - name: Plant
+    type: CP-9
+    loop: CHW
+    towers:
+    - name: CT
+    wse:
+      approach_k: 2.0
+  loops:
+  - name: CHW
+    primary_pump:
+      part_load:
+        method: M2
+        curve: K-DP(0.3)
+        f_min: 0.3
+        running: R-ALL

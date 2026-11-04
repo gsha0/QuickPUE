@@ -1,0 +1,38 @@
+# Shared defaults for every preset (not a preset itself). Values are assumptions with the basis noted;
+# every value appears in the input register as kind "assumption" (REQ-PRE-1, REQ-ATTR-2).
+id: _base_common
+template:
+  scenarios: nabers
+  zones:
+    - name: Electrical rooms
+      category: electrical
+      setpoint_c: 35.0            # [NKB] MV / electrical rooms < 35 C
+      pressurised: true
+      losses: {ups: 0.9, transformer_mvlv: 1.0, distribution: 0.5}
+    - name: Battery rooms
+      category: battery
+      setpoint_c: 25.0            # [NKB] battery rooms < 25 C
+      pressurised: true
+      losses: {ups: 0.1}
+  room_units:
+    - name: Electrical room CRAH
+      type: CRAH
+      serves: [Electrical rooms]
+      loop: CHW
+    - name: Battery room split
+      type: split
+      serves: [Battery rooms]
+      cop: 3.0                    # [NKB] COP 3.0 where no vendor data
+      fan_power_kw: 0.5
+  electrical:
+    loss_convention: physical
+    ups:
+      - name: UPS-IT
+        path: it
+        efficiency: [[0.0, 0.94], [1.0, 0.94]]   # 8.4.2: 0.94 flat ([KO26])
+    transformers:
+      - {name: TX-MVLV, level: MVLV, percent: 1.0, basis: facility}   # [NKB] MV/LV 1.0 %
+      - {name: TX-HV, level: HV, percent: 0.5, basis: facility}       # [NKB] HV 0.5 %
+    distribution: {name: Distribution, percent: 1.0, basis: infrastructure}   # [NKB] 1 %
+    heat_outdoors: {transformer_hv: 1.0, distribution: 0.5}   # HV transformers outdoors; half of cable losses in risers
+  contingency: {percent: 0.0}       # 8.4.2: 0 %

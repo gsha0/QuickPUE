@@ -1,0 +1,356 @@
+# DC_O1 reference test case (docs/TEST_CASES.md Section 3): 62 MW, dual CHW loops, adiabatic
+# air-cooled chillers. Source status codes: S stated -> document; D derived -> inference;
+# M missing -> assumption (filled here so the case runs end to end, tier T3); C conflicting -> noted.
+# The source conventions are reproduced where the test case asks for them (R-2, R-3, R-4).
+schema_version: "1.0"
+project:
+  name: DC_O1
+  location: Western Sydney (test weather file)
+  workflow: nabers
+  reference_documents: ["docs/TEST_CASES.md v0.1, case DC_O1"]
+  metering_point: A
+weather:
+  epw: ../data/AUS_NSW_Horsley.Equestrian.Centre.947600_TMYx.2011-2025.epw
+scenarios: nabers
+water_system: WS-2
+
+halls:
+  - name: Hall A
+    count: 2
+    it_kw: {value: 9400, source: {kind: document, ref: "3.1 data halls 2 x 9.4 MW"}}
+    liquid_fraction: {value: 0.7, source: {kind: assumption, ref: "M-O1: CDUs 'up to 70 percent' (C, I-O3)"}}
+    area_m2: {value: 3316.5, source: {kind: inference, ref: "21,875 m2 data centre area split by IT (D)"}}
+    cold_aisle_c: {value: 27.0, source: {kind: document, ref: "3.1 cold aisle 27 +/- 1 C"}}
+    lighting_w_m2: {value: 5.0, source: {kind: document, ref: "3.4 data hall 5 W/m2"}}
+    occupancy_m2_per_person: {value: 100.0, source: {kind: document, ref: "3.4 data hall 100 m2/person"}}
+    losses: {Distribution: 0.3333}
+  - name: Hall B
+    count: 4
+    it_kw: {value: 10800, source: {kind: inference, ref: "I-O2: 10.84 MW stated; 10.8 MW gives the 62.0 MW energy basis"}}
+    liquid_fraction: {value: 0.7, source: {kind: assumption, ref: "M-O1"}}
+    area_m2: {value: 3810.5, source: {kind: inference, ref: "21,875 m2 split by IT (D)"}}
+    cold_aisle_c: 27.0
+    lighting_w_m2: 5.0
+    occupancy_m2_per_person: 100.0
+    losses: {Distribution: 0.3333}
+
+loops:
+  - name: CHW-MT
+    supply_c: {value: 24.0, source: {kind: document, ref: "3.2 medium temperature loop 24 / 34 C to FWUs"}}
+    return_c: 34.0
+    reset: {type: fixed}          # M-O5: no reset stated
+  - name: CHW-HT
+    supply_c: {value: 26.0, source: {kind: document, ref: "3.2 high temperature loop 26 / 36 C to CDUs and WC DX"}}
+    return_c: 36.0
+    connection: {value: blended, source: {kind: assumption, ref: "M-O4: DT-A blending from the common plant"}}
+    from_loop: CHW-MT
+
+plants:
+  - name: Chiller plant
+    type: {value: CP-2, source: {kind: assumption, ref: "M-O3: integrated free cooling inferred from the COP surface"}}
+    loop: CHW-MT
+    chillers:
+      - name: ACC
+        kind: air_cooled
+        quantity: {value: 38, source: {kind: document, ref: "3.2: 38 chillers, 33 duty / 5 standby"}}
+        standby: 5
+        capacity_kw: {value: 2200, source: {kind: document, ref: "3.2 rated point 2,200 kW (wet mode)"}}
+        cop: {value: 4.80, source: {kind: document, ref: "3.2 COP 4.80 at 32 C ECA and 24 C CHW"}}
+        rated_lwt_c: 24.0
+        rated_ect_c: 32.0
+        curves: {library: EP-ACC-SCROLL-434, source: "M-O2: manufacturer table missing; library analogue"}
+        recirculation_k: {value: 5.0, source: {kind: document, ref: "3.2 +5 K from CFD, dry and wet"}}
+        recirculation_order: {value: after_pads, source: {kind: document, ref: "O-10 / R-1: added after the pads"}}
+        adiabatic:
+          activation_c: {value: 31.0, source: {kind: document, ref: "3.2 activation 31 C DB"}}
+          activation_inclusive: {value: false, source: {kind: inference, ref: "O-11: 157 h reproduced with T > 31"}}
+          efficiency: {value: 0.78, source: {kind: document, ref: "3.2 efficiency 78 %"}}
+        free_cooling:
+          enable_dt_k: {value: 1.0, source: {kind: assumption, ref: "M-O3 default"}}
+        integral_pump:
+          power_kw: {value: 37.0, source: {kind: document, ref: "3.2 integral pump 37 kW"}}
+          flow_l_s: {value: 52.6, source: {kind: inference, ref: "2,200 kW at 10 K (D)"}}
+          part_load:
+            method: M6
+            table: [[0.0, 0.0], [0.9, 1.0], [1.0, 1.1111]]   # O-05: f = IT fraction / 0.9 (plant sized to 90 %)
+            curve: K-SQUARE                                  # O-05 / R-4: square law
+            f_min: {value: 0.7, source: {kind: document, ref: "3.2 minimum flow 70 %"}}
+            running: R-ALL
+        integral_pump_units: duty                            # O-05: 33 duty pumps at all loads
+
+cdus:
+  - name: CDU-A
+    serves: [Hall A]
+    loop: CHW-HT
+    quantity: {value: 20, source: {kind: document, ref: "3.3 60 installed / 30 active, 5 active per hall (D)"}}
+    active: 10
+    pump:
+      power_kw: {value: 25.0, source: {kind: document, ref: "3.3 25 kW per unit in the 9.4 MW halls"}}
+      on_ups: {value: true, source: {kind: assumption, ref: "M-O7: CDUs on the non-IT UPS"}}
+      part_load: {method: M1, curve: K-LIN}          # O-04 / R-4 / I-O8: linear with IT load
+  - name: CDU-B
+    serves: [Hall B]
+    loop: CHW-HT
+    quantity: 40
+    active: 20
+    pump:
+      power_kw: {value: 23.0, source: {kind: document, ref: "3.3 23 kW per unit in the 10.84 MW halls"}}
+      on_ups: true
+      part_load: {method: M1, curve: K-LIN}
+
+fwus:
+  - name: FWU-A
+    serves: [Hall A]
+    loop: CHW-MT
+    quantity: {value: 20, source: {kind: assumption, ref: "M-O6: N+1 per hall from coil capacity (9 + 1 per hall)"}}
+    standby: 2
+    fan_power_kw: {value: 31.0, source: {kind: document, ref: "3.3 type A 31.0 kW"}}
+    airflow_l_s: 31000
+    static_pa: 580
+    coil_capacity_kw: 330
+    on_ups: {value: true, source: {kind: assumption, ref: "M-O7: FWUs on the non-IT UPS"}}
+    air_dt_k: 11.0
+    part_load:
+      method: M2
+      curve: {table: [[0.0, 0.08], [0.1, 0.08], [0.2, 0.11], [0.3, 0.16], [0.4, 0.22], [0.5, 0.29], [0.6, 0.37],
+                      [0.7, 0.47], [0.8, 0.61], [0.9, 0.78], [1.0, 1.0]], name: K-USER fan curve 2.2,
+              source: "TEST_CASES 2.2 (DC_S1 report chart data)"}
+      f_min: 0.3
+      running: R-ALL
+  - name: FWU-B
+    serves: [Hall B]
+    loop: CHW-MT
+    quantity: {value: 48, source: {kind: assumption, ref: "M-O6: N+1 per hall (11 + 1 per hall)"}}
+    standby: 4
+    fan_power_kw: {value: 29.0, source: {kind: document, ref: "3.3 type B 29.0 kW"}}
+    airflow_l_s: 29000
+    static_pa: 580
+    coil_capacity_kw: 326
+    on_ups: true
+    air_dt_k: 11.0
+    part_load:
+      method: M2
+      curve: {table: [[0.0, 0.08], [0.1, 0.08], [0.2, 0.11], [0.3, 0.16], [0.4, 0.22], [0.5, 0.29], [0.6, 0.37],
+                      [0.7, 0.47], [0.8, 0.61], [0.9, 0.78], [1.0, 1.0]], name: K-USER fan curve 2.2,
+              source: "TEST_CASES 2.2"}
+      f_min: 0.3
+      running: R-ALL
+
+zones:
+  - name: PTU rooms
+    category: electrical
+    count: 6
+    area_m2: {value: 200, source: {kind: assumption, ref: "M-O6 (area not stated)"}}
+    setpoint_c: 27.0
+    pressurised: true
+    losses: {UPS-IT: 0.95, Distribution: 0.1667}
+  - name: PTU battery rooms
+    category: battery
+    count: 6
+    area_m2: {value: 60, source: {kind: assumption, ref: "M-O6"}}
+    setpoint_c: 25.0
+    pressurised: true
+    losses: {UPS-IT: 0.05}
+  - name: TX rooms
+    category: transformer
+    count: 6
+    area_m2: {value: 80, source: {kind: assumption, ref: "M-O6"}}
+    setpoint_c: 27.0
+    pressurised: true
+    losses: {TX-MVLV: 1.0}
+  - name: Switch rooms
+    category: electrical
+    count: 6
+    area_m2: {value: 120, source: {kind: assumption, ref: "M-O6"}}
+    setpoint_c: 27.0
+    pressurised: true
+    losses: {Distribution: 0.1667}
+  - name: MMR
+    category: comms
+    count: 2
+    area_m2: {value: 100, source: {kind: assumption, ref: "M-O6"}}
+    setpoint_c: 25.0
+    pressurised: true
+  - name: MSR
+    category: electrical
+    count: 2
+    area_m2: {value: 150, source: {kind: assumption, ref: "M-O6 / M-O7: mechanical switch rooms hold the non-IT UPS"}}
+    setpoint_c: 25.0
+    pressurised: true
+    losses: {UPS-MECH: 0.9}
+  - name: MSR battery
+    category: battery
+    count: 2
+    area_m2: 50
+    setpoint_c: 25.0
+    pressurised: true
+    losses: {UPS-MECH: 0.1}
+  - name: Substation
+    category: electrical
+    area_m2: {value: 1282, source: {kind: document, ref: "3.1 substation 1,282 m2"}}
+    setpoint_c: 25.0
+  - name: Office
+    category: office
+    area_m2: {value: 1970, source: {kind: document, ref: "3.1 office 1,970 m2"}}
+    setpoint_c: 24.0
+    external_wall_m2: {value: 600, source: {kind: assumption, ref: "geometry not stated"}}
+    u_wall: {value: 0.714, source: {kind: document, ref: "fabric table R 1.4 (I-O10: input summary R 1.0)"}}
+    roof_exposed: true
+    u_roof: {value: 0.3125, source: {kind: document, ref: "roof R 3.2"}}
+    lighting_w_m2: 8.0
+    lighting_profile: {value: office_simple, source: {kind: assumption, ref: "NCC Class 5 profile not available"}}
+    occupancy_m2_per_person: 8.0
+    occupancy_profile: office_simple
+    equipment_w_m2: 10.0
+    equipment_profile: office_simple
+    lighting_end_use: lighting_office
+    equipment_end_use: equipment_office
+
+room_units:
+  - name: CRAC PTU (water-cooled)
+    type: PAC
+    serves: [PTU rooms]
+    loop: CHW-HT
+    capacity_kw: {value: 80.0, source: {kind: document, ref: "3.3 PTU CRAC 80.0 kWr"}}
+    airflow_l_s: 6500
+    oa_l_s: 50
+    off_coil_c: 16.0
+    fan_power_kw: 3.3
+    cop: {value: 3.0, source: {kind: document, ref: "3.3 COP 3.0 assumed"}}
+    rated_condenser_c: 26.0
+  - name: CRAC TX (water-cooled)
+    type: PAC
+    serves: [TX rooms]
+    loop: CHW-HT
+    capacity_kw: 29.5
+    airflow_l_s: 2400
+    oa_l_s: 30
+    off_coil_c: 16.0
+    fan_power_kw: 1.2
+    cop: 3.0
+    rated_condenser_c: 26.0
+  - name: CRAC MMR (water-cooled)
+    type: PAC
+    serves: [MMR]
+    loop: CHW-HT
+    capacity_kw: 53.8
+    airflow_l_s: 4200
+    oa_l_s: 50
+    off_coil_c: 16.0
+    fan_power_kw: 2.1
+    cop: 3.0
+    rated_condenser_c: 26.0
+  - name: PAC battery
+    type: PAC
+    serves: [PTU battery rooms]
+    loop: CHW-HT
+    capacity_kw: {value: 4.6, source: {kind: document, ref: "3.3 battery PAC 4.6 kW, 0.19 kW fan, 40 L/s OA"}}
+    airflow_l_s: 261
+    oa_l_s: 40
+    fan_power_kw: 0.19
+    cop: 3.0
+    rated_condenser_c: 26.0
+  - name: PAC pressurisation A
+    type: PAC
+    serves: [Switch rooms]
+    loop: CHW-HT
+    capacity_kw: 17.9
+    airflow_l_s: 840
+    oa_l_s: 420
+    fan_power_kw: 0.79
+    cop: 3.0
+    rated_condenser_c: 26.0
+  - name: Split MSR
+    type: split
+    serves: [MSR, MSR battery]
+    cop: {value: 3.0, source: {kind: document, ref: "3.3 air-cooled VRF / split COP 3.0 assumed"}}
+    fan_power_kw: 0.5
+  - name: VRF substation
+    type: VRF
+    serves: [Substation]
+    cop: 3.0
+    fan_power_kw: 0.5
+    end_use: dx_air_cooled
+  - name: VRF office
+    type: VRF
+    serves: [Office]
+    cop: 3.0
+    fan_power_kw: 1.0
+  - name: Humidifier A
+    type: humidifier
+    serves: [Hall A]
+    quantity: {value: 2, source: {kind: assumption, ref: "M-O6: one per hall"}}
+    power_kw: {value: 11.9, source: {kind: document, ref: "3.3 humidifier type A 11.9 kW"}}
+    activation: outdoor_dewpoint_below
+    activation_value: {value: 2.0, source: {kind: assumption, ref: "RH 20 % at 27 C ~ 2 C dew point; run hours M-O6"}}
+  - name: Humidifier B
+    type: humidifier
+    serves: [Hall B]
+    quantity: 4
+    power_kw: 12.7
+    activation: outdoor_dewpoint_below
+    activation_value: 2.0
+  - name: OAF
+    type: OAF
+    serves: [PTU rooms, TX rooms, Switch rooms, MMR]
+    quantity: 1
+    power_kw: {value: 15.41, source: {kind: inference, ref: "constant flow and power: 135.0 MWh / 8,760 h (D)"}}
+    oa_l_s: 0
+  - name: Battery EAF
+    type: EAF
+    serves: [PTU battery rooms]
+    quantity: 1
+    power_kw: {value: 1.30, source: {kind: inference, ref: "continuous: 11.4 MWh / 8,760 h (D)"}}
+
+electrical:
+  loss_convention: {value: simplified, source: {kind: document, ref: "R-2: P_out (1 - eta) reproduces the source"}}
+  ups:
+    - name: UPS-IT
+      path: it
+      module_kw: {value: 62000, source: {kind: inference, ref: "O-03: UPS load fraction = IT fraction"}}
+      efficiency: [[0.25, 0.950], [0.50, 0.960], [0.75, 0.965], [1.00, 0.970]]
+    - name: UPS-MECH
+      path: mechanical
+      efficiency: [[0.25, 0.950], [0.50, 0.960], [0.75, 0.965], [1.00, 0.970]]
+  transformers:
+    - name: TX-MVLV
+      level: MVLV
+      basis: {value: it, source: {kind: inference, ref: "O-06 / R-3: 1.3387 % of IT energy"}}
+      percent: 1.3387
+    - name: TX-HV
+      level: HV
+      basis: it
+      percent: {value: 1.07096, source: {kind: inference, ref: "O-06: HV = 0.8 / 1.0 of the MV/LV loss"}}
+  distribution:
+    name: Distribution
+    basis: {value: it, source: {kind: inference, ref: "I-O7: switchboard loss equals the MV/LV loss"}}
+    percent: 1.3387
+  heat_outdoors: {TX-HV: 1.0}
+
+other:
+  generators:
+    count: 38
+    format: A
+    fuel_l_per_h: {value: 875, source: {kind: document, ref: "3.4 tests 875 L/h, 1 h, 4 per year"}}
+    hours_per_test: 1.0
+    tests_per_year: 4
+    diesel_mwh_per_l: {value: 0.010722, source: {kind: inference, ref: "O-02 source-implied factor"}}
+  jacket_heaters:
+    kw_per_generator: 8.0
+    t_on_c: 10.0
+    t_off_c: 32.0
+    eflh_hours: {value: 3680, source: {kind: document, ref: "2.3 EFLH 3,680 h (the stated ramp gives 5,777 h from the EPW, see O-07)"}}
+  lifts:
+    - {name: Passenger, count: 2, trips_per_year: 36500, power_kw: 13.6, trip_time_s: 13.0, standby_kw: 0.08}
+    - {name: Goods, count: 2, trips_per_year: 18250, power_kw: 51.2, trip_time_s: 15.4, standby_kw: 0.08}
+  loads:
+    - {name: DHW, end_use: dhw, annual_kwh: 80898}
+    - {name: Misc house power, end_use: ancillary, annual_kwh: 86100}
+  pv: {annual_kwh: 200095}
+
+contingency:
+  percent: {value: 2.5, source: {kind: document, ref: "3.4 contingency 2.5 %"}}
+  basis: gross
+
+settings:
+  sizing_it_fraction: 0.9

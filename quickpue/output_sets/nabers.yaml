@@ -1,0 +1,4 @@
+# NABERS design-stage estimate output set (requirements 13.2). Energy-ratio PUE only (D14).
+id: nabers
+title: Design-stage energy assessment (NABERS-style output set)
+tables: [OUT-1, OUT-2, OUT-2c, OUT-3, OUT-5a, OUT-5b, OUT-6a, OUT-6c, OUT-7a, OUT-7b, OUT-8a, OUT-8b, OUT-9a, OUT-9b, OUT-10, OUT-11, OUT-6b]
