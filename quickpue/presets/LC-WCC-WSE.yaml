@@ -1,0 +1,40 @@
+# Topology preset LC-WCC-WSE (requirements 8.4.1). Defaults are assumptions; override any value.
+id: LC-WCC-WSE
+name: Liquid + air, water-cooled chillers, towers, WSE
+extends: _base_lc
+water_system: WS-1
+plant_type: CP-7
+dcoptest: Type 8
+description: Water-cooled chillers with cooling towers and a plate heat exchanger
+  water-side economiser (full / partial / mechanical).
+hall_name: Data hall
+template:
+  plants:
+  - name: Plant
+    type: CP-7
+    loop: CHW
+    chillers:
+    - name: WCC
+      kind: water_cooled
+    towers:
+    - name: CT
+    wse:
+      approach_k: 2.0
+    condenser_water:
+      reset:
+        type: wetbulb_offset
+        offset_k: 3.0
+        min_c: 12.78
+        max_c: 23.89
+      pump:
+        part_load:
+          method: M3
+          curve: K-CONST
+  loops:
+  - name: CHW
+    primary_pump:
+      part_load:
+        method: M2
+        curve: K-DP(0.3)
+        f_min: 0.3
+        running: R-ALL

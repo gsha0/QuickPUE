@@ -1,0 +1,29 @@
+# Topology preset AIR-DC (requirements 8.4.1). Defaults are assumptions; override any value.
+id: AIR-DC
+name: Air cooled, dry coolers only
+extends: _base_air
+water_system: WS-6
+plant_type: CP-3
+dcoptest: Type 4
+description: Dry coolers only; supply temperature drifts (unmet) when ambient + approach
+  exceeds the setpoint.
+hall_name: Data hall
+template:
+  plants:
+  - name: Plant
+    type: CP-3
+    loop: CHW
+    dry_coolers:
+    - name: DC
+  loops:
+  - name: CHW
+    primary_pump:
+      part_load:
+        method: M2
+        curve: K-DP(0.3)
+        f_min: 0.3
+        running: R-ALL
+    supply_c: 24.0
+    return_c: 34.0
+    medium: pg
+    glycol_pct: 25.0

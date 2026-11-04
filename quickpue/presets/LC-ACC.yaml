@@ -1,0 +1,25 @@
+# Topology preset LC-ACC (requirements 8.4.1). Defaults are assumptions; override any value.
+id: LC-ACC
+name: Liquid + air, air-cooled chillers
+extends: _base_lc
+water_system: WS-1
+plant_type: CP-1
+dcoptest: new
+description: Air-cooled chillers (no free cooling), integral CHW pumps with minimum
+  flow.
+hall_name: Data hall
+template:
+  plants:
+  - name: Plant
+    type: CP-1
+    loop: CHW
+    chillers:
+    - name: ACC
+      kind: air_cooled
+      recirculation_k: 2.7
+      integral_pump:
+        part_load:
+          method: M2
+          curve: K-DP(0.3)
+          f_min: 0.5
+          running: R-ALL

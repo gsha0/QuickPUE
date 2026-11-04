@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quickpue"
+version = "0.1.0"
+description = "QuickPUE: rapid, transparent data centre infrastructure energy and PUE estimator (quasi-steady 8,760 h engine)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "BSD-3-Clause" }
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "pydantic>=2.5",
+    "pyyaml>=6.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+xlsx = ["openpyxl>=3.1"]
+charts = ["matplotlib>=3.7"]
+parquet = ["pyarrow>=12"]
+fit = ["scipy>=1.10"]
+dev = ["pytest>=7", "openpyxl>=3.1", "matplotlib>=3.7"]
+
+[project.scripts]
+quickpue = "quickpue.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["quickpue*"]
+
+[tool.setuptools.package-data]
+quickpue = ["presets/*.yaml", "output_sets/*.yaml", "data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

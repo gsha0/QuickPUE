@@ -1,0 +1,21 @@
+# Liquid + air halls on a single loop CHW (WS-1); plant added by each preset.
+id: _base_lc
+extends: _base_common
+water_system: WS-1
+template:
+  loops:
+    - name: CHW
+      supply_c: 24.0              # [NKB] medium temperature loop 24 / 34 C (assumption)
+      return_c: 34.0
+  cdus:
+    - name: CDU
+      serves: [Data hall]
+      loop: CHW
+      approach_k: 3.0             # 8.4.2: 3 K at rated capacity
+      pump: {part_load: {method: M3, curve: K-CONST}}   # 11.6: CDU pumps fixed ([NKB])
+  fwus:
+    - name: FWU
+      serves: [Data hall]
+      loop: CHW
+      air_dt_k: 11.0
+      part_load: {method: M2, curve: K-VSM, f_min: 0.3, running: R-ALL}   # 11.6

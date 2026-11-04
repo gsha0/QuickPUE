@@ -1,0 +1,15 @@
+# Air-cooled halls (WS-6): FWUs on CHW, no CDUs; plant added by each preset.
+id: _base_air
+extends: _base_common
+water_system: WS-6
+template:
+  loops:
+    - name: CHW
+      supply_c: 20.0              # assumption for 27 C cold aisle without liquid cooling
+      return_c: 30.0
+  fwus:
+    - name: FWU
+      serves: [Data hall]
+      loop: CHW
+      air_dt_k: 11.0
+      part_load: {method: M2, curve: K-VSM, f_min: 0.3, running: R-ALL}

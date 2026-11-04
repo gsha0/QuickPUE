@@ -1,0 +1,4 @@
+# LEED early-stage energy analysis output set (initial proposal, requirements 13.2).
+id: leed
+title: Early-stage energy analysis (LEED-style output set)
+tables: [OUT-1, OUT-2, OUT-2c, OUT-4, OUT-5a, OUT-5b, OUT-6a, OUT-6c, OUT-6b]

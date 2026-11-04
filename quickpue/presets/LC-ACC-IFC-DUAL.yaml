@@ -1,0 +1,47 @@
+# Topology preset LC-ACC-IFC-DUAL (requirements 8.4.1). Defaults are assumptions; override any value.
+id: LC-ACC-IFC-DUAL
+name: Dual CHW loops (FWU loop, CDU / PAC loop) from a common plant
+extends: _base_lc
+water_system: WS-2
+plant_type: CP-2
+dcoptest: new
+description: Medium temperature loop CHW (24 / 34 C) to FWUs and room units; high
+  temperature loop CHW-HT (26 / 36 C) to CDUs, blended from CHW (DT-A, default arrangement).
+hall_name: Data hall
+template:
+  plants:
+  - name: Plant
+    type: CP-2
+    loop: CHW
+    chillers:
+    - name: ACC
+      kind: air_cooled
+      recirculation_k: 2.7
+      integral_pump:
+        part_load:
+          method: M2
+          curve: K-DP(0.3)
+          f_min: 0.5
+          running: R-ALL
+      free_cooling:
+        enable_dt_k: 1.0
+  loops:
+  - name: CHW
+    supply_c: 24.0
+    return_c: 34.0
+    medium: pg
+    glycol_pct: 25.0
+  - name: CHW-HT
+    supply_c: 26.0
+    return_c: 36.0
+    connection: blended
+    from_loop: CHW
+    secondary_pump:
+      part_load:
+        method: M2
+        curve: K-DP(0.3)
+        f_min: 0.3
+        running: R-ALL
+  cdus:
+  - name: CDU
+    loop: CHW-HT

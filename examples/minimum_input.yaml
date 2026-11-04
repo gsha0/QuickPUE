@@ -1,0 +1,11 @@
+# Minimum-input mode (requirements 8.4, UC-7): preset + location + IT load + liquid fraction.
+preset: LC-ACC-IFC-AD
+project:
+  name: Minimum input example
+  location: Western Sydney
+weather:
+  epw: ../tests/data/AUS_NSW_Horsley.Equestrian.Centre.947600_TMYx.2011-2025.epw
+it:
+  installed_kw: 10000
+  liquid_fraction: 0.8
+scenarios: nabers

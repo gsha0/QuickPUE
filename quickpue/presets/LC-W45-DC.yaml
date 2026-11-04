@@ -1,0 +1,49 @@
+# Topology preset LC-W45-DC (requirements 8.4.1). Defaults are assumptions; override any value.
+id: LC-W45-DC
+name: Warm loop on dry coolers to CDUs; FWUs on an air-cooled chiller loop ([KO26]
+  W45)
+extends: _base_lc
+water_system: WS-5
+plant_type: CP-3 + CP-1
+dcoptest: new
+description: Warm facility water (40 / 50 C) from dry coolers to CDUs; FWUs and room
+  units on a separate air-cooled chiller loop CHW (18 / 28 C).
+hall_name: Data hall
+template:
+  plants:
+  - name: Plant FWS
+    type: CP-3
+    loop: FWS
+    dry_coolers:
+    - name: DC
+  - name: Plant
+    type: CP-1
+    loop: CHW
+    chillers:
+    - name: ACC
+      kind: air_cooled
+      recirculation_k: 2.7
+      integral_pump:
+        part_load:
+          method: M2
+          curve: K-DP(0.3)
+          f_min: 0.5
+          running: R-ALL
+  loops:
+  - name: CHW
+    supply_c: 18.0
+    return_c: 28.0
+  - name: FWS
+    supply_c: 40.0
+    return_c: 50.0
+    primary_pump:
+      part_load:
+        method: M2
+        curve: K-DP(0.3)
+        f_min: 0.3
+        running: R-ALL
+    medium: pg
+    glycol_pct: 25.0
+  cdus:
+  - name: CDU
+    loop: FWS
