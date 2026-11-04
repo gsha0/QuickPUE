@@ -166,11 +166,20 @@ def _apply_sizes(project: Project, loads: DesignLoads, dw: Weather, log: SizingL
                 log.set(f"fwus[{f.name}].airflow_l_s", 15000.0, "L/s", "default unit airflow 15,000 L/s (assumption)")
                 log.set(f"fwus[{f.name}].coil_capacity_kw", f.coil_capacity_kw, "kW", "rho*cp*dT_air*airflow")
         if f.duty is None:
-            f.duty = max(1, _ceil(q / f.coil_capacity_kw)) if q > 0 else 1
-            f.standby = f.standby or 1
+            halls = {h.name: h for h in p.halls}
+            duty = 0
+            standby = 0
+            for hn in f.serves:
+                hall = halls[hn]
+                qh = g(f"fwu_coil:{f.name}:{hn}") or q / max(len(f.serves), 1)
+                per_hall = max(1, _ceil(qh / hall.count / f.coil_capacity_kw)) if qh > 0 else 1
+                duty += per_hall * hall.count
+                standby += hall.count
+            f.duty = duty
+            f.standby = f.standby or standby
             f.quantity = f.duty + f.standby
-            log.set(f"fwus[{f.name}].quantity", f.quantity, "", f"N+1: duty = ceil(design air load {q:,.0f} kW / "
-                    f"coil capacity) = {f.duty}, plus 1 standby (8.4.2)")
+            log.set(f"fwus[{f.name}].quantity", f.quantity, "", f"N+1 per hall: duty = ceil(design coil load per "
+                    f"hall incl. fan heat / coil capacity) x halls = {f.duty}, plus 1 standby per hall (8.4.2)")
         if f.fan_power_kw is None:
             pa = f.static_pa or DEFAULT_PRESSURE_PA["FWU"]
             f.fan_power_kw = FAN_W_PER_M3S_PA * (f.airflow_l_s / 1000.0) * pa / 1000.0
@@ -208,10 +217,16 @@ def _apply_sizes(project: Project, loads: DesignLoads, dw: Weather, log: SizingL
             continue
         q = g(f"room_unit:{r.name}")
         if r.duty is None:
-            r.duty = 1
+            if r.capacity_kw:
+                r.duty = max(1, _ceil(1.1 * q / r.capacity_kw)) if q > 0 else 1
+                rule = (f"duty = ceil(1.1 x design load {q:,.1f} kW / unit capacity) = {r.duty}, plus 1 standby "
+                        f"(assumption)")
+            else:
+                r.duty = 1
+                rule = "N+1 with N = 1 (assumption)"
             r.standby = r.standby or 1
             r.quantity = r.duty + r.standby
-            log.set(f"room_units[{r.name}].quantity", r.quantity, "", "N+1 (assumption)")
+            log.set(f"room_units[{r.name}].quantity", r.quantity, "", rule)
         if r.capacity_kw is None:
             r.capacity_kw = max(q * 1.1 / max(r.duty, 1), 1.0)
             log.set(f"room_units[{r.name}].capacity_kw", r.capacity_kw, "kW",

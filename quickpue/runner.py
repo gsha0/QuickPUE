@@ -45,6 +45,7 @@ class Results:
     warnings: list[str]
     assumptions: list[str]
     design_pass: SimResult | None = None
+    design_db_wb: tuple = (float("nan"), float("nan"))
     version: str = __version__
     schema_version: str = SCHEMA_VERSION
     engine: Engine | None = None
@@ -105,8 +106,11 @@ def run(project, scenarios: list[str] | None = None, *, counterfactual: bool | N
     _missing_m1 = [g.name for g in _all_groups(eng) if g.auto_sized.get("design_load_missing")]
     if _missing_m1:
         warnings.append(f"M1 design load missing for {', '.join(_missing_m1)}; set part_load.design_load_kw")
-    return Results(sized, lp, w, out, design, label, register, warnings + eng.warn_static, assumptions, dres,
-                   engine=eng)
+    from .weather import design_point
+
+    db, wb, _ = design_point(w, sized.weather.design_condition)
+    return Results(sized, lp, w, out, design, label, register, list(dict.fromkeys(warnings + eng.warn_static)),
+                   assumptions, dres, design_db_wb=(db, wb), engine=eng)
 
 
 def _all_groups(eng: Engine):
@@ -291,6 +295,24 @@ def _build_register(lp: LoadedProject, sized: Project, log: SizingLog) -> list[R
     reg = dict(lp.register)
     for e in log.entries:
         reg[e.path] = e
-    # pydantic defaults applied by the tool (REQ-ATTR-2): top-level sections only, to keep it readable
-    out = sorted(reg.values(), key=lambda e: e.path)
-    return out
+    # schema defaults applied by the tool (REQ-ATTR-2): fields the user and preset left unset whose
+    # schema description states a basis
+    _walk_defaults(sized, "", reg)
+    return sorted(reg.values(), key=lambda e: e.path)
+
+
+def _walk_defaults(model, path: str, reg: dict):
+    from pydantic import BaseModel
+
+    for name, info in type(model).model_fields.items():
+        val = getattr(model, name)
+        p = f"{path}.{name}" if path else name
+        if isinstance(val, BaseModel):
+            _walk_defaults(val, p, reg)
+        elif isinstance(val, list) and val and isinstance(val[0], BaseModel):
+            for i, item in enumerate(val):
+                tag = getattr(item, "name", i)
+                _walk_defaults(item, f"{p}[{tag}]", reg)
+        elif name not in model.model_fields_set and info.description and val is not None and p not in reg:
+            if isinstance(val, (int, float, str, bool)):
+                reg[p] = RegisterEntry(p, val, "", "assumption", info.description, "tool default", "default")

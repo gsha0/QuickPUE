@@ -482,7 +482,7 @@ class Engine:
         conv = np.zeros(n, dtype=bool)
         cyc = np.zeros(n, dtype=bool)
         last_infra = None
-        last2 = None
+        history: list[np.ndarray] = []
         iters = 0
         for iters in range(1, S.max_iterations + 1):
             st = self._iterate(w, it_h, lf_h, P_IT, it_frac, prev, hall_static, zone_gain, zone_amb, zone_lat,
@@ -491,13 +491,14 @@ class Engine:
             if last_infra is not None:
                 rel = np.abs(infra - last_infra) / np.maximum(np.abs(infra), 1e-6)
                 conv = rel <= S.tolerance
-                if last2 is not None:
-                    # two-cycle: discrete staging flips between two states with no fixed point
-                    rel2 = np.abs(infra - last2) / np.maximum(np.abs(infra), 1e-6)
-                    cyc = (~conv) & (rel2 <= S.tolerance)
+                # limit cycle of period 2 to 4: discrete staging flips between states with no fixed point
+                cyc = np.zeros(n, dtype=bool)
+                for old in history[-4:-1]:
+                    cyc |= np.abs(infra - old) / np.maximum(np.abs(infra), 1e-6) <= S.tolerance
+                cyc &= ~conv
                 if (conv | cyc).all():
                     break
-            last2 = last_infra
+            history.append(infra)
             r = S.relaxation
             new = {"mech_ups": st["mech_ups"], "infra": st["infra_for_dist"], "mech": st["mech_total"],
                    "zone_fanheat": st["zone_fanheat"], "facility_other": st["facility_other"]}
@@ -510,8 +511,8 @@ class Engine:
         if cyc.any():
             hrs = np.flatnonzero(cyc)[:10].tolist()
             gap = float(np.max(np.abs(infra - last_infra)[cyc] / np.maximum(infra[cyc], 1e-6)))
-            warnings.append(f"Discrete staging limit cycle in {int(cyc.sum())} h (equipment count flips between two "
-                            f"states; max infrastructure difference {100 * gap:.1f} %); last state kept. Hours: {hrs}")
+            warnings.append(f"Discrete staging limit cycle in {int(cyc.sum())} h (equipment count flips between states "
+                            f"with no fixed point; max infrastructure difference {100 * gap:.1f} %); last state kept. Hours: {hrs}")
         if nonconv.any():
             hrs = np.flatnonzero(nonconv)[:10].tolist()
             warnings.append(f"Coupling iteration not converged in {int(nonconv.sum())} h after {iters} iterations "
@@ -744,6 +745,10 @@ class Engine:
             fan_heat = fan * (g.heat_to_stream if g else 1.0)
             heat_in += fan_heat
             coil = q + fan_heat
+            sizing[f"fwu_coil:{f.name}"] = coil
+            for h in f.serves:
+                sizing[f"fwu_coil:{f.name}:{h}"] = coil * np.where(q > 0, q_air_h[h] * fwu_shares[(f.name, h)] /
+                                                                    np.maximum(q, 1e-9), 0.0)
             loop_q[f.loop] += coil
             loop_v[f.loop] += coil / (self.loop_rcp[f.loop] * self.loop_dt[f.loop])
             d = {"q_room": q, "q_coil": coil, "power": fan}
@@ -800,6 +805,10 @@ class Engine:
             handled = np.minimum(q_load, cap) if cap > 0 else q_load
             unmet = q_load - handled
             frac_handled = np.where(q_load > 0, handled / np.maximum(q_load, 1e-9), 1.0)
+            if dx:
+                # ledger: latent picked up by DX units enters the balance; its unmet share stays in the zone
+                heat_in += lat_tot
+                removed += lat_tot * (1.0 - frac_handled)
             for zname, share in _shares(r):
                 sh = share / share_norm.get(zname, 1.0)
                 handled_by_zone[zname] += np.maximum(zq[zname], 0.0) * sh * frac_handled

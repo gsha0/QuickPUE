@@ -365,14 +365,20 @@ def design_check_tables(res):
     dl = res.design_loads.sizing
     for pl in p.plants:
         q = dl.get(f"plant:{pl.name}", 0.0)
+        db, wb = res.design_db_wb
         for c in pl.chillers:
+            m = next(x["model"] for x in res.engine.plant_rt[pl.name]["chillers"] if x["model"].name == c.name)
+            lp = next(x for x in p.loops if x.name == pl.loop)
+            tc = db + c.recirculation_k if c.kind == "air_cooled" else m.ect_ref
+            avail = float(m.capacity(lp.supply_c, tc))
             inst_n = c.duty * c.capacity_kw
             inst_n1 = (c.duty + c.standby) * c.capacity_kw
             caps.append({"Equipment": f"Chillers {c.name}", "Required at design (kW)": q,
                          "Installed N (kW)": inst_n, "Installed N+x (kW)": inst_n1,
-                         "Margin N (%)": 100 * (inst_n / q - 1) if q else np.nan,
-                         "Note": "rated capacity; available capacity at design ambient from CAPFT"})
-            d = s0.sim.detail.get(f"chiller:{c.name}")
+                         "Available N at design (kW)": c.duty * avail,
+                         "Margin N (%)": 100 * (c.duty * avail / q - 1) if q else np.nan,
+                         "Note": f"available = N x Q_ref x CAPFT({lp.supply_c:g} C, {tc:.1f} C) at the design "
+                                 f"ambient (dry, incl. recirculation)"})
     for c in p.cdus:
         q = dl.get(f"cdu:{c.name}", 0.0)
         caps.append({"Equipment": f"CDU {c.name}", "Required at design (kW)": q,
