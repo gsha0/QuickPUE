@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuickPUE inputs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%232a78d6'/%3E%3Cpath d='M4 11V5h3.2a2 2 0 010 4H4' stroke='white' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true">Q</span><span>QuickPUE <b>inputs</b></span></div>
+  <div class="file" id="file"></div>
+  <nav class="toolbar" aria-label="File">
+    <button type="button" class="btn" id="b-new" title="New project">New</button>
+    <button type="button" class="btn" id="b-open" title="Open a project file">Open</button>
+    <button type="button" class="btn" id="b-save" title="Save (Ctrl+S)">Save</button>
+    <button type="button" class="btn" id="b-saveas" title="Save as (Ctrl+Shift+S)">Save as</button>
+    <button type="button" class="btn" id="b-download" title="Download the YAML file">Download</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button type="button" class="btn icon" id="b-undo" title="Undo (Ctrl+Z outside text fields)" aria-label="Undo">↶</button>
+    <button type="button" class="btn icon" id="b-redo" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+    <button type="button" class="btn" id="b-theme" title="Switch theme">Theme: auto</button>
+  </nav>
+  <button type="button" class="status" id="status" onclick="document.body.classList.add('side-open')">Starting...</button>
+  <button type="button" class="btn side-toggle" id="b-side" aria-label="Show issues">Issues</button>
+</header>
+<div class="layout">
+  <aside class="nav" aria-label="Sections">
+    <select id="nav-select" aria-label="Section"></select>
+    <div id="nav"></div>
+    <div class="nav-foot muted small" id="version"></div>
+  </aside>
+  <main id="main" tabindex="-1"></main>
+  <aside class="side" id="side" aria-label="Issues and YAML preview"></aside>
+</div>
+<dialog id="dlg"></dialog>
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
