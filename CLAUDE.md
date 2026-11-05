@@ -12,6 +12,7 @@ pytest                                      # full suite, about 40 s
 pytest tests/test_components.py             # fast component checks only
 python tests/cases/compare_reference.py     # regenerate docs/VALIDATION_RESULTS.md
 quickpue run examples/minimum_input.yaml    # smoke run of the CLI
+quickpue-ui examples/minimum_input.yaml     # web input editor at http://127.0.0.1:8765/
 ```
 
 ## Layout
@@ -27,6 +28,7 @@ quickpue run examples/minimum_input.yaml    # smoke run of the CLI
 | `quickpue/sources.py` | Equation and data source register (S-EQ / S-DEF IDs) |
 | `quickpue/presets/`, `quickpue/output_sets/` | Topology presets and workflow output sets (YAML) |
 | `tests/cases/` | DC_O1 and DC_S1 reference projects and the comparison script |
+| `quickpue/webui/` | Optional web input editor (inputs and input visualisation only): `server.py` (stdlib HTTP), `api.py` (JSON API over `load_project` / `prepare`), `static/` (plain JS, no build step) |
 
 ## Rules for changes
 
@@ -45,6 +47,10 @@ quickpue run examples/minimum_input.yaml    # smoke run of the CLI
 * **After engine, sizing or preset changes:** run `pytest`, regenerate `docs/VALIDATION_RESULTS.md`, and update
   `docs/VALIDATION.md` or `docs/DESIGN_DECISIONS.md` if a number or a choice changed.
 * Engine code is vectorised over hours with numpy; avoid per-hour Python loops (target under 5 s per scenario).
+* Web input editor: keep it a client of the package. It may call the loader, `prepare`, presets and the
+  libraries, but engine, schema, sizing and preset code must not depend on it. The form is generated from the
+  pydantic schema, so a new schema field appears without editor changes; add a hint in `static/js/form.js`
+  only for special widgets. Run `pytest tests/test_webui.py` after changing it.
 * Presets: shared defaults live in `quickpue/presets/_base_*.yaml`; every preset must still run from minimum
   input (`tests/test_system.py::test_every_preset_runs_from_minimum_input`).
 

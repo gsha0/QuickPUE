@@ -65,6 +65,33 @@ q.export(res, "out", formats=("csv", "md", "xlsx"), output_set="design-check")
 | `quickpue weather file.epw` | EPW parameters and monthly summary |
 | `quickpue export-eplus project.yaml` | EnergyPlus reference exporter: not implemented yet (phase P3) |
 
+## Web input editor
+
+An optional browser front end for building and checking input files. It edits inputs only: it never runs
+the simulation, and it writes the same YAML the CLI reads.
+
+```bash
+quickpue-ui                                  # browse and edit projects under the current directory
+quickpue-ui tests/cases/dc_o1.yaml           # open a project (python -m quickpue.webui works too)
+quickpue-ui --root ~/projects --port 8800 --no-browser
+```
+
+* Standard library HTTP server bound to 127.0.0.1 and plain JavaScript; no extra dependencies, works
+  offline. It reads and saves `.yaml` files only inside `--root`. Python project scripts are not opened.
+* A form for every schema section, generated from the pydantic schema, so it follows `quickpue/schema.py`.
+  Preset items show as "preset" and can be customised (your entries merge over the preset item by name, as in
+  the YAML) or removed (`_remove: true`).
+* Fields left empty are not written. Their placeholder shows the value that will apply and where it comes
+  from: preset, tool default (with its basis) or auto-sized (with the sizing rule, from the design pass).
+* Each value can carry a unit and a source (`{value, unit, source}`), set with the tag next to the field.
+* A live check runs the same steps as `quickpue validate` (schema, references, auto-sizing). Errors and
+  reference problems are marked on the fields and listed in the Issues panel.
+* Input visualisation: EPW climate summary (monthly temperatures, hourly dry bulb heatmap, hours above each
+  input threshold), IT load per scenario, a system diagram (spaces, terminal units, loops, plants), the
+  electrical loss heat allocation as the engine resolves it, part-load curve, reset and efficiency table
+  previews, and the full input register (downloadable as CSV).
+* Comments in a YAML file are not kept when the editor saves it; use Save as to keep the original.
+
 ## Project files
 
 YAML (data) or Python (`PROJECT = {...}` or `project()` returning a dict) validated by one pydantic schema

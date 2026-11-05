@@ -55,3 +55,8 @@ changed. Every default is overridable per project and is listed in the input reg
 * **Office profiles**: the NCC Class 5 table is not bundled; `office_simple` is a stated assumption. Custom
   24 h weekday / weekend profiles or 8,760 h CSV profiles can be supplied.
 * **PV**: annual yield distributed by EPW global horizontal irradiance (or an hourly CSV). PVWatts is not built in.
+* **Web input editor** (`quickpue-ui`, `quickpue/webui/`): D2 delivers QuickPUE as a library and CLI; the
+  editor is an optional front end for inputs only and does not change that. It builds and edits the same YAML
+  project files, validates them with `load_project` and `prepare` (as `quickpue validate`), and never runs the
+  hourly simulation. It writes only values the user enters, so preset, default and auto-sized values keep their
+  origin in the input register. YAML comments are not preserved when the editor saves a file.

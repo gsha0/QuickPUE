@@ -25,12 +25,14 @@ dev = ["pytest>=7", "openpyxl>=3.1", "matplotlib>=3.7"]
 
 [project.scripts]
 quickpue = "quickpue.cli:main"
+quickpue-ui = "quickpue.webui.server:main"
 
 [tool.setuptools.packages.find]
 include = ["quickpue*"]
 
 [tool.setuptools.package-data]
-quickpue = ["presets/*.yaml", "output_sets/*.yaml", "data/*.json"]
+quickpue = ["presets/*.yaml", "output_sets/*.yaml", "data/*.json", "webui/static/*.html", "webui/static/*.css",
+            "webui/static/js/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
